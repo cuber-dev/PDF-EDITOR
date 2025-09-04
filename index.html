@@ -202,6 +202,7 @@
     let firstViewport = null;
     let firstPageSize = null; // {width,height} in PDF points
     let coords = {}; // { field: {x,y} in PDF points (origin bottom-left) }
+    
     const fields = [
       "taxable1", "sgstAmt1", "cgstAmt1", // first row
       "taxable2", "sgstAmt2", "cgstAmt2", // second row
@@ -379,21 +380,22 @@
         const netRounded = Math.round(subTotal); // nearest rupee
         const roundOff = +(netRounded - subTotal);
         
-        // Numbers to paint
         const vals = {
+          // First row
           taxable1: fmtINR(taxable, 2),
           sgstAmt1: fmtINR(sgstAmt, 2),
           cgstAmt1: fmtINR(cgstAmt, 2),
           
+          // Second row
           taxable2: fmtINR(taxable, 2),
           sgstAmt2: fmtINR(sgstAmt, 2),
           cgstAmt2: fmtINR(cgstAmt, 2),
           
+          // Totals
           subTotal: fmtINR(subTotal, 2),
           roundOff: (roundOff >= 0 ? "+" : "") + fmtINR(roundOff, 2),
           netTotal: netRounded.toLocaleString('en-IN')
-        };
-        // Helper to draw white box then text at a PDF point
+        }; // Helper to draw white box then text at a PDF point
         function paint(key) {
           const p = coords[key];
           if (!p) return;
@@ -411,9 +413,14 @@
         }
         
         // Paint overlays
-        paint("taxable");
-        paint("sgstAmt");
-        paint("cgstAmt");
+        paint("taxable1");
+        paint("sgstAmt1");
+        paint("cgstAmt1");
+        
+        paint("taxable2");
+        paint("sgstAmt2");
+        paint("cgstAmt2");
+        
         paint("subTotal");
         paint("roundOff");
         paint("netTotal");
