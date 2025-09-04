@@ -1,888 +1,438 @@
-<!--
-
 <!doctype html>
-<html lang="en">Libraries from CDN
+<html lang="en">
 
 <head>
   <meta charset="utf-8" />
-  <title>Invoice Fixer — Overlay Corrected Values</title>
+  <title>Invoice Fixer — Fixed Coordinates</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- PDF.js (preview + text extraction) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
   </script>
+  
+  <!-- pdf-lib (overlay + output) -->
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  
   <style>
     :root {
-      --bg: #0f1724;
-      --card: #0b1220;
+      --bg: #0b1220;
+      --card: #0f172a;
       --accent: #8b5cf6;
-      --muted: #94a3b8;
-      --white: #e6eef8;
+      --text: #e9eef7;
+      --muted: #9fb0c7;
+    }
+    
+    * {
+      box-sizing: border-box
     }
     
     body {
-      font-family: Inter, system-ui, Segoe UI, Roboto, Arial;
-      background: linear-gradient(180deg, #071029 0%, #071a2b 100%);
-      color: var(--white);
       margin: 0;
-      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, Segoe UI, Roboto, Arial
     }
     
-    .container {
-      max-width: 1000px;
+    .wrap {
+      max-width: 1100px;
       margin: 0 auto;
+      padding: 20px
     }
     
     h1 {
-      margin: 0 0 12px;
-      font-size: 20px
+      font-size: 18px;
+      margin: 0 0 12px
     }
     
     .card {
       background: var(--card);
-      padding: 16px;
-      border-radius: 10px;
-      box-shadow: 0 6px 30px rgba(2, 6, 23, 0.6);
+      padding: 14px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
       margin-bottom: 12px
     }
     
-    input[type=file] {
-      color: var(--muted)
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center
     }
     
     button {
       background: var(--accent);
-      border: none;
+      color: #fff;
+      border: 0;
+      border-radius: 10px;
       padding: 8px 12px;
-      border-radius: 8px;
-      color: white;
       cursor: pointer
     }
     
     button.secondary {
       background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.06)
+      border: 1px solid rgba(255, 255, 255, .15);
+      color: var(--text)
     }
     
-    .row {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap
-    }
-    
-    #preview {
-      width: 100%;
-      max-height: 560px;
+    input[type="number"],
+    select {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, .15);
+      color: var(--text);
       border-radius: 8px;
-      overflow: auto;
-      background: #071126;
-      padding: 12px
+      padding: 6px 8px;
+      min-width: 80px
     }
     
-    canvas.pageCanvas {
-      display: block;
-      margin: 8px auto;
-      border: 1px solid rgba(255, 255, 255, 0.03);
-      box-shadow: 0 6px 18px rgba(2, 6, 23, 0.5)
-    }
-    
-    .controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-top: 10px
-    }
-    
-    label.small {
+    label {
       font-size: 12px;
       color: var(--muted)
     }
     
-    .info {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 8px
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 6px
     }
     
-    .footer {
-      margin-top: 12px;
-      font-size: 13px;
+    #canvasWrap {
+      max-height: 75vh;
+      overflow: auto;
+      border: 1px dashed rgba(255, 255, 255, .08);
+      border-radius: 10px;
+      padding: 10px
+    }
+    
+    canvas {
+      max-width: 100%;
+      height: auto;
+      background: #0a0f1c;
+      border-radius: 8px
+    }
+    
+    .legend {
+      font-size: 12px;
       color: var(--muted)
     }
     
-    .page-block {
-      margin-bottom: 18px
-    }
-    
-    .field-list {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 6px
-    }
-    
-    .small-input {
-      width: 72px;
-      padding: 6px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.03);
-      background: transparent;
-      color: var(--white)
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .06);
+      margin-right: 6px
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <h1>Invoice Fixer — Overlay corrected invoice numbers (client-side)</h1>
+  <div class="wrap">
+    <h1>Invoice Fixer — Overlay Correct Taxables/Taxes (Fixed Coords)</h1>
     
     <div class="card">
       <div class="row">
-        <input id="fileInput" type="file" accept="application/pdf" />
-        <button id="processBtn">Process & Preview</button>
-        <button id="downloadBtn" disabled>Download Corrected PDF</button>
-        <button id="resetBtn" class="secondary">Reset</button>
+        <input id="file" type="file" accept="application/pdf" />
+        <div class="stack">
+          <label>Fallback Discount (₹) if not detected</label>
+          <input id="fallbackDiscount" type="number" value="6000" step="0.01" />
+        </div>
+        <div class="stack">
+          <label>SGST %</label>
+          <input id="sgstPct" type="number" value="14" step="0.01" />
+        </div>
+        <div class="stack">
+          <label>CGST %</label>
+          <input id="cgstPct" type="number" value="14" step="0.01" />
+        </div>
+        <div class="stack">
+          <label>Font size</label>
+          <input id="fontSize" type="number" value="10" step="1" />
+        </div>
+        <div class="stack">
+          <label>Box padding</label>
+          <input id="pad" type="number" value="2" step="1" />
+        </div>
+        <button id="previewBtn">Preview & Calibrate</button>
+        <button id="processBtn" disabled>Process All Pages & Download</button>
       </div>
-      <div class="controls">
-        <div>
-          <label class="small">Global X offset (px)</label><br />
-          <input id="xOffset" class="small-input" type="number" value="0" />
-        </div>
-        <div>
-          <label class="small">Global Y offset (px)</label><br />
-          <input id="yOffset" class="small-input" type="number" value="0" />
-        </div>
-        <div>
-          <label class="small">Font size</label><br />
-          <input id="fontSize" class="small-input" type="number" value="10" />
-        </div>
-        <div>
-          <label class="small">White box padding</label><br />
-          <input id="boxPadding" class="small-input" type="number" value="2" />
-        </div>
-      </div>
-      
-      <div class="info">
-        This runs entirely in your browser. It tries to find numbers (Rate, Discount, SGST%, CGST%, Sub Total) using PDF text extraction, recalculates values and overlays corrected numbers on the original PDF pages. Works best for consistent invoice templates.
+      <div class="legend" style="margin-top:8px">
+        1) Load PDF → 2) Choose a field name → 3) Click on the preview where that number appears → repeat for all fields → 4) Process.
       </div>
     </div>
     
-    <div id="preview" class="card">
-      <div id="pagesContainer"></div>
+    <div class="card">
+      <div class="row">
+        <div class="stack">
+          <label>Field to place (click on preview canvas)</label>
+          <select id="activeField">
+            <!-- First row -->
+            <option value="taxable1">Taxable (row 1)</option>
+            <option value="sgstAmt1">SGST amount (row 1)</option>
+            <option value="cgstAmt1">CGST amount (row 1)</option>
+            
+            <!-- Second row -->
+            <option value="taxable2">Taxable (row 2)</option>
+            <option value="sgstAmt2">SGST amount (row 2)</option>
+            <option value="cgstAmt2">CGST amount (row 2)</option>
+            
+            <!-- Totals -->
+            <option value="subTotal">Sub Total</option>
+            <option value="roundOff">Round Off</option>
+            <option value="netTotal">Net Total</option>
+          </select>
+        </div>
+        <button id="clearCoords" class="secondary">Clear positions</button>
+        <div class="legend">
+          <span class="badge">Tip</span> Positions are fixed for all pages. Click precisely on the **left edge** of each number.
+        </div>
+      </div>
+      <div id="canvasWrap"><canvas id="preview" width="800" height="1131"></canvas></div>
     </div>
     
-    <div class="footer">
-      Built by Nandhu — if automatic positions are wrong, tweak X/Y offset and font size then re-generate. This page doesn't upload your PDF anywhere.
-    </div>
+    <div class="card legend" id="status"></div>
   </div>
   
-  
-  <script src="https://unpkg.com/pdfjs-dist@3.10.349/build/pdf.min.js"></script>
-  <script src="https://unpkg.com/pdf-lib@1.28.0/dist/pdf-lib.min.js"></script>
-  
   <script>
-    // === config ===
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.10.349/build/pdf.worker.min.js';
+    /* ---------- State ---------- */
+    let srcBytes = null;
+    let pdfjsDoc = null;
+    let firstViewport = null;
+    let firstPageSize = null; // {width,height} in PDF points
+    let coords = {}; // { field: {x,y} in PDF points (origin bottom-left) }
+    const fields = [
+      "taxable1", "sgstAmt1", "cgstAmt1", // first row
+      "taxable2", "sgstAmt2", "cgstAmt2", // second row
+      "subTotal", "roundOff", "netTotal" // totals
+    ];
+    /* ---------- UI refs ---------- */
+    const el = id => document.getElementById(id);
+    const fileInput = el('file');
+    const previewBtn = el('previewBtn');
+    const processBtn = el('processBtn');
+    const activeField = el('activeField');
+    const clearCoords = el('clearCoords');
+    const canvas = el('preview');
+    const ctx = canvas.getContext('2d');
+    const statusEl = el('status');
     
-    const fileInput = document.getElementById('fileInput');
-    const processBtn = document.getElementById('processBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const preview = document.getElementById('pagesContainer');
-    const resetBtn = document.getElementById('resetBtn');
+    const fallbackDiscountEl = el('fallbackDiscount');
+    const sgstPctEl = el('sgstPct');
+    const cgstPctEl = el('cgstPct');
+    const fontSizeEl = el('fontSize');
+    const padEl = el('pad');
     
-    const xOffsetInput = document.getElementById('xOffset');
-    const yOffsetInput = document.getElementById('yOffset');
-    const fontSizeInput = document.getElementById('fontSize');
-    const boxPaddingInput = document.getElementById('boxPadding');
+    /* ---------- Helpers ---------- */
+    function fmtINR(n, d = 2) { return Number(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
     
-    let loadedPdfBytes = null;
-    let processedPdfBytes = null;
-    let pageMeta = []; // store per-page detections for overlaying in pdf-lib
+    function toNum(s) { s = (s || "").toString().replace(/,/g, ''); const n = parseFloat(s); return isNaN(n) ? null : n; }
     
-    function clearPreview() {
-      preview.innerHTML = '';
-      processedPdfBytes = null;
-      downloadBtn.disabled = true;
-      pageMeta = [];
+    function setStatus(msg) { statusEl.textContent = msg; }
+    
+    function drawMarker(field) {
+      const p = coords[field];
+      if (!p || !firstViewport) return;
+      
+      // Convert PDF-lib coords back to canvas px
+      const x = p.x / firstPageSize.width * canvas.width;
+      const y = canvas.height - (p.y / firstPageSize.height * canvas.height);
+      
+      ctx.save();
+      ctx.fillStyle = "rgba(255,0,0,0.5)"; // red box
+      ctx.fillRect(x - 2, y - 10, 110, 16);
+      ctx.fillStyle = "#fff";
+      ctx.font = "10px monospace";
+      ctx.fillText(field, x, y);
+      ctx.restore();
     }
     
-    resetBtn.addEventListener('click', () => {
-      fileInput.value = '';
-      clearPreview();
-    });
+    function redrawPreviewExtras() {
+      if (!firstViewport) return;
+      fields.forEach(drawMarker);
+    }
     
-    processBtn.addEventListener('click', async () => {
-      clearPreview();
-      if (!fileInput.files || fileInput.files.length === 0) { alert('Choose a PDF file first'); return; }
-      const f = fileInput.files[0];
-      loadedPdfBytes = await f.arrayBuffer();
-      await processPdf(loadedPdfBytes);
-    });
+    /* ---------- Load + preview first page ---------- */
+    previewBtn.onclick = async () => {
+      if (!fileInput.files.length) { alert("Choose a PDF first"); return; }
+      srcBytes = await fileInput.files[0].arrayBuffer();
+      
+      // pdf.js for preview
+      const loadingTask = pdfjsLib.getDocument({ data: srcBytes });
+      pdfjsDoc = await loadingTask.promise;
+      
+      const page = await pdfjsDoc.getPage(1);
+      firstViewport = page.getViewport({ scale: 1.5 });
+      canvas.width = Math.floor(firstViewport.width);
+      canvas.height = Math.floor(firstViewport.height);
+      
+      const renderCtx = { canvasContext: ctx, viewport: firstViewport };
+      await page.render(renderCtx).promise;
+      
+      // We also need the actual PDF page size in points for pdf-lib coordinates
+      // pdf-lib will tell us after loading:
+      const docLib = await PDFLib.PDFDocument.load(srcBytes);
+      const p0 = docLib.getPages()[0];
+      firstPageSize = { width: p0.getWidth(), height: p0.getHeight() };
+      
+      processBtn.disabled = false;
+      setStatus("Preview ready. Select a field name and click the canvas at the LEFT EDGE of that printed number to set its position. Repeat for all fields. Then click “Process All Pages & Download”.");
+      redrawPreviewExtras();
+    };
     
-    downloadBtn.addEventListener('click', async () => {
-      if (!processedPdfBytes) { alert('No corrected PDF ready'); return; }
-      const blob = new Blob([processedPdfBytes], { type: 'application/pdf' });
+    /* ---------- Click to set coords ---------- */
+    canvas.addEventListener('click', (e) => {
+      if (!firstViewport || !firstPageSize) return;
+      const rect = canvas.getBoundingClientRect();
+      const xPx = e.clientX - rect.left;
+      const yPx = e.clientY - rect.top;
+      
+      // Convert to PDF-lib coords (origin bottom-left)
+      const xPdf = xPx / canvas.width * firstPageSize.width;
+      const yPdf = (canvas.height - yPx) / canvas.height * firstPageSize.height;
+      
+      coords[activeField.value] = { x: xPdf, y: yPdf };
+      
+      pdfjsDoc.getPage(1).then(page => {
+        page.render({ canvasContext: ctx, viewport: firstViewport }).promise.then(redrawPreviewExtras);
+      });
+    });
+    clearCoords.onclick = () => {
+      coords = {};
+      if (pdfjsDoc) pdfjsDoc.getPage(1).then(page => {
+        page.render({ canvasContext: ctx, viewport: firstViewport }).promise.then(redrawPreviewExtras);
+      });
+    };
+    
+    /* ---------- Extraction (per page) ---------- */
+    async function extractNumbersForPage(p) {
+      const page = await pdfjsDoc.getPage(p);
+      const tc = await page.getTextContent();
+      const nums = [];
+      for (const it of tc.items) {
+        const s = (it.str || "").trim();
+        if (!s) continue;
+        // numeric tokens like 61,144.06 / 47768.80 / 6000.00 / 14.00
+        const m = s.match(/^(?:\d{1,3}(?:,\d{3})*|\d+)(?:\.\d+)?$/);
+        if (m) { nums.push(toNum(s)); }
+      }
+      return nums;
+    }
+    
+    // Heuristic: Rate = smallest "big" number on page (40k–70k).
+    function detectRate(allNums) {
+      const big = allNums.filter(n => n >= 40000 && n <= 70000);
+      if (!big.length) return null;
+      return Math.min(...big);
+    }
+    // Detect discount ~6000 (between 3000 and 15000). Fallback to user value.
+    function detectDiscount(allNums, fallback) {
+      const candidates = allNums.filter(n => n >= 3000 && n <= 15000);
+      if (candidates.includes(6000)) return 6000.00;
+      return candidates.length ? candidates[0] : fallback;
+    }
+    // Percent: prefer 14
+    function detectPercent(allNums, fallback) {
+      return allNums.includes(14) || allNums.includes(14.00) ? 14.00 : (fallback ?? 14.00);
+    }
+    
+    /* ---------- Overlay engine ---------- */
+    async function processAllPagesAndDownload() {
+      const { PDFDocument, rgb, StandardFonts } = PDFLib;
+      const pdfDoc = await PDFDocument.load(srcBytes);
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      
+      // Validate we have positions for all fields
+      for (const f of fields) {
+        if (!coords[f]) { alert(`Set position for: ${f}`); return; }
+      }
+      
+      const sgstPct = parseFloat(sgstPctEl.value || "14");
+      const cgstPct = parseFloat(cgstPctEl.value || "14");
+      const fallbackDiscount = parseFloat(fallbackDiscountEl.value || "6000");
+      const fSize = parseFloat(fontSizeEl.value || "10");
+      const pad = parseFloat(padEl.value || "2");
+      
+      const pageCount = pdfDoc.getPageCount();
+      for (let i = 0; i < pageCount; i++) {
+        const page = pdfDoc.getPages()[i];
+        const pnum = i + 1;
+        
+        // pull numbers from same page via pdf.js for per-page Rate/Discount/%
+        const nums = await extractNumbersForPage(pnum);
+        const rate = detectRate(nums);
+        const discount = detectDiscount(nums, fallbackDiscount);
+        const sgstP = detectPercent(nums, sgstPct);
+        const cgstP = detectPercent(nums, cgstPct);
+        
+        if (rate == null) {
+          // if not found, skip page
+          continue;
+        }
+        
+        // ---------- CORRECT CALC ----------
+        const taxable = Math.max(0, rate - discount); // ✅ SUBTRACT discount
+        const sgstAmt = +(taxable * (sgstP / 100));
+        const cgstAmt = +(taxable * (cgstP / 100));
+        const subTotal = +(taxable + sgstAmt + cgstAmt);
+        const netRounded = Math.round(subTotal); // nearest rupee
+        const roundOff = +(netRounded - subTotal);
+        
+        // Numbers to paint
+        const vals = {
+          taxable1: fmtINR(taxable, 2),
+          sgstAmt1: fmtINR(sgstAmt, 2),
+          cgstAmt1: fmtINR(cgstAmt, 2),
+          
+          taxable2: fmtINR(taxable, 2),
+          sgstAmt2: fmtINR(sgstAmt, 2),
+          cgstAmt2: fmtINR(cgstAmt, 2),
+          
+          subTotal: fmtINR(subTotal, 2),
+          roundOff: (roundOff >= 0 ? "+" : "") + fmtINR(roundOff, 2),
+          netTotal: netRounded.toLocaleString('en-IN')
+        };
+        // Helper to draw white box then text at a PDF point
+        function paint(key) {
+          const p = coords[key];
+          if (!p) return;
+          const text = vals[key];
+          const tw = font.widthOfTextAtSize(text, fSize);
+          const th = fSize + 2;
+          page.drawRectangle({
+            x: p.x - pad,
+            y: p.y - th - pad,
+            width: tw + pad * 6,
+            height: th + pad * 3,
+            color: rgb(1, 1, 1)
+          });
+          page.drawText(text, { x: p.x, y: p.y - th / 2, size: fSize, font, color: rgb(0, 0, 0) });
+        }
+        
+        // Paint overlays
+        paint("taxable");
+        paint("sgstAmt");
+        paint("cgstAmt");
+        paint("subTotal");
+        paint("roundOff");
+        paint("netTotal");
+      }
+      
+      const out = await pdfDoc.save();
+      const blob = new Blob([out], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'Corrected_Invoices.pdf';
+      a.download = "Corrected_Invoices.pdf";
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-    });
-    
-    // Utility: number extractor (accepts commas, decimals)
-    function extractNumberTokens(text) {
-      // find numbers like 61,144.06 or 47768.80 or 6,000.00
-      const regex = /(?:\d{1,3}(?:,\d{3})*|\d+)(?:\.\d+)?/g;
-      const arr = text.match(regex) || [];
-      return arr.map(s => s.replace(/,/g, ''));
     }
     
-    // Normalize to float
-    function toFloat(s) { const n = parseFloat(String(s).replace(/,/g, '')); return isNaN(n) ? null : n; }
-    
-    // Basic heuristic: search page text for patterns and capture nearby numeric items & coords
-    async function processPdf(pdfBytes) {
-      const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
-      const pdf = await loadingTask.promise;
-      
-      // For rendering previews
-      preview.innerHTML = '';
-      
-      // Collect page detections
-      pageMeta = [];
-      
-      for (let p = 1; p <= pdf.numPages; p++) {
-        const page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale: 1.5 }); // render scale for preview
-        // Render to canvas
-        const canvas = document.createElement('canvas');
-        canvas.className = 'pageCanvas';
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        // Extract text content
-        const textContent = await page.getTextContent();
-        // textContent.items -> each has str and transform [a,b,c,d,e,f]
-        // We'll create candidate tokens with positions scaled to viewport
-        const items = textContent.items.map(it => {
-          const t = it.transform; // [a,b,c,d,e,f] where e,f are x,y in pdf units
-          // pdf.js transform to px for our canvas: use viewport.transform
-          const [a, b, c, d, e, f] = t;
-          const tx = viewport.transform[0] * e + viewport.transform[2] * f + viewport.transform[4];
-          const ty = viewport.transform[1] * e + viewport.transform[3] * f + viewport.transform[5];
-          return { str: it.str, transform: t, x: tx, y: ty, width: (it.width || 0) * viewport.scale, height: (it.height || 0) * viewport.scale };
-        });
-        
-        // Heuristics to find candidates for important fields.
-        // We'll look for numeric tokens and keywords 'Discount' 'Disc' 'Taxable' 'Sub Total' 'SubTotal' 'Net Total' 'SGST' 'CGST'
-        const numericTokens = items.filter(it => /\d/.test(it.str) && /[0-9]/.test(it.str));
-        // find keywords
-        const keywords = {};
-        items.forEach(it => {
-          const s = it.str.trim().toLowerCase();
-          if (s.includes('discount') || s.includes('disc')) keywords.discount = it;
-          if (s.includes('taxable')) keywords.taxable = it;
-          if (s.includes('sub total') || s.includes('subtotal')) keywords.subtotal = it;
-          if (s.includes('net total') || s.includes('nettotal')) keywords.nettotal = it;
-          if (s.includes('sgst')) keywords.sgst = it;
-          if (s.includes('cgst')) keywords.cgst = it;
-          if (s.includes('rate') && !keywords.rate) keywords.rate = it;
-        });
-        
-        // Another heuristic: numeric tokens near keyword positions (x distance)
-        const findNearestNumberAfter = (keywordItem, maxDist = 250) => {
-          if (!keywordItem) return null;
-          // choose numeric token on same line (y close) and x larger than keyword x (to its right)
-          const cand = numericTokens
-            .filter(n => Math.abs(n.y - keywordItem.y) < 18) // same line (approx)
-            .sort((a, b) => Math.abs((a.x - keywordItem.x)) - Math.abs((b.x - keywordItem.x)));
-          return cand[0] || null;
-        };
-        
-        const pageDetection = { pageNumber: p, viewport, found: {} };
-        
-        // Attempt to detect Discount, Rate, SGST%, CGST%, Subtotal, Net total
-        try {
-          const discItem = keywords.discount || keywords.disc || null;
-          const rateItem = keywords.rate || null;
-          const sgstItem = keywords.sgst || null;
-          const cgstItem = keywords.cgst || null;
-          const subtotalItem = keywords.subtotal || null;
-          const nettotalItem = keywords.nettotal || null;
-          const taxableItem = keywords.taxable || null;
-          
-          // Detection: numbers near these labels
-          const discNum = findNearestNumberAfter(discItem) || numericTokens.find(n => n.x > 350 && n.y > 300 && toFloat(n.str) && toFloat(n.str) < 1000000 && Math.abs(n.y - (discItem?.y || n.y)) < 40) || null;
-          const rateNum = findNearestNumberAfter(rateItem) || numericTokens.find(n => n.x < 200 && toFloat(n.str) && toFloat(n.str) > 1000);
-          const sgstNum = findNearestNumberAfter(sgstItem) || numericTokens.find(n => /\b14(\.0+)?\b/.test(n.str) || /\b\d{1,2}(\.\d+)?\b/.test(n.str));
-          const cgstNum = findNearestNumberAfter(cgstItem) || null;
-          const subtotalNum = findNearestNumberAfter(subtotalItem) || null;
-          const netNum = findNearestNumberAfter(nettotalItem) || null;
-          
-          // fallback: look for big numbers in bottom-right area (totals)
-          const bottomRightNums = numericTokens.filter(n => n.x > viewport.width * 0.4 && n.y > viewport.height * 0.5).sort((a, b) => b.x - a.x);
-          
-          pageDetection.found.rawCandidates = numericTokens.slice(0, 30).map(n => ({ s: n.str, x: n.x, y: n.y }));
-          
-          // Heuristic mapping: use the most frequent patterns in the invoices you showed:
-          // - There's Rate near item lines (left)
-          // - Discount sometimes appears as a numeric block like 6000.00 near bottom (we can pick the last big numeric that matches exact 6000 or small thousand)
-          // - SGST & CGST often both 14.00 appear close to each other
-          // We'll attempt:
-          let rateVal = rateNum ? toFloat(rateNum.str) : null;
-          let discountVal = discNum ? toFloat(discNum.str) : null;
-          
-          // If discount not found, search for recurring small numbers like 6000 near bottom
-          if (!discountVal) {
-            const lastBottom = bottomRightNums.slice(0, 6).map(n => toFloat(n.str)).filter(v => v && v < 20000 && v > 1);
-            if (lastBottom.length) discountVal = lastBottom[lastBottom.length - 1];
-          }
-          
-          // Try SGST/CGST percents detection (common to be 14.00)
-          let sgstPercent = null,
-            cgstPercent = null;
-          if (sgstNum && /%/.test(sgstNum.str) === false && sgstNum.str.indexOf('.') > -1 && toFloat(sgstNum.str) < 100) {
-            sgstPercent = toFloat(sgstNum.str);
-          } else {
-            // search for a nearby small number that is < 30 (percentage)
-            const nearbyPerc = numericTokens.find(n => toFloat(n.str) && toFloat(n.str) > 0 && toFloat(n.str) < 30 && Math.abs(n.y - (sgstItem?.y || netNum?.y || 0)) < 40);
-            if (nearbyPerc) sgstPercent = toFloat(nearbyPerc.str);
-          }
-          // CGST likely same as SGST
-          cgstPercent = sgstPercent;
-          
-          // Some invoices show rate as the big number near top; if rate missing, pick the largest numeric on page that looks like price
-          if (!rateVal) {
-            const candidates = numericTokens.map(n => toFloat(n.str)).filter(v => v && v > 100 && v < 1000000);
-            if (candidates.length) rateVal = Math.max(...candidates);
-          }
-          
-          // Subtotal & Net number detection
-          let subtotalVal = subtotalNum ? toFloat(subtotalNum.str) : null;
-          let netVal = netNum ? toFloat(netNum.str) : null;
-          if (!netVal) {
-            // pick the last numeric at bottom of page
-            const lastNum = numericTokens.filter(n => n.y > viewport.height * 0.5).slice(-1)[0];
-            if (lastNum) netVal = toFloat(lastNum.str);
-          }
-          
-          // If we have rate & discount & percents, compute corrected numbers
-          if (rateVal != null && discountVal != null && sgstPercent != null && cgstPercent != null) {
-            const taxable = rateVal - discountVal;
-            const sgst = taxable * (sgstPercent / 100);
-            const cgst = taxable * (cgstPercent / 100);
-            const correctedSubtotal = taxable + sgst + cgst;
-            const correctedNet = Math.round(correctedSubtotal);
-            
-            // Now find where to overlay: prefer positions of found values (taxable, sgst, cgst, subtotal, net)
-            // For each value we will try to choose a target item to replace. Simple logic:
-            // - taxable position -> keywords.taxable near text or numeric near it
-            // - sgst position -> item near keyword 'SGST'
-            // - cgst position -> item near 'CGST'
-            // - subtotal -> near 'Sub Total' keyword or bottom right numeric
-            // - net -> bottom-right final numeric
-            
-            const findReplacementPos = (preferKeywordItem, fallbackNumeric) => {
-              if (preferKeywordItem) {
-                const num = findNearestNumberAfter(preferKeywordItem) || numericTokens.find(n => Math.abs(n.y - preferKeywordItem.y) < 24);
-                if (num) return num;
-              }
-              if (fallbackNumeric) return fallbackNumeric;
-              return null;
-            };
-            
-            const taxablePos = findReplacementPos(taxableItem, numericTokens.find(n => n.y > viewport.height * 0.3 && n.x > viewport.width * 0.2));
-            const sgstPos = findReplacementPos(sgstItem, numericTokens.find(n => n.str.includes(String(sgstPercent))));
-            const cgstPos = findReplacementPos(cgstItem, numericTokens.find(n => n.str.includes(String(cgstPercent))));
-            const subtotalPos = findReplacementPos(subtotalItem, bottomRightNums[1] || bottomRightNums[0]);
-            const netPos = findReplacementPos(nettotalItem, bottomRightNums[0]);
-            
-            pageDetection.found.rate = { value: rateVal, pos: rateNum };
-            pageDetection.found.discount = { value: discountVal, pos: discNum || bottomRightNums[bottomRightNums.length - 2] };
-            pageDetection.found.taxable = { value: taxable, pos: taxablePos };
-            pageDetection.found.sgstPercent = sgstPercent;
-            pageDetection.found.cgstPercent = cgstPercent;
-            pageDetection.found.sgst = { value: sgst, pos: sgstPos };
-            pageDetection.found.cgst = { value: cgst, pos: cgstPos };
-            pageDetection.found.subtotal = { value: correctedSubtotal, pos: subtotalPos };
-            pageDetection.found.net = { value: correctedNet, pos: netPos };
-            
-            // For preview: draw overlays on canvas context
-            const ctxOverlay = canvas.getContext('2d');
-            ctxOverlay.save();
-            ctxOverlay.font = (Number(fontSizeInput.value) || 10) + 'px monospace';
-            ctxOverlay.fillStyle = 'rgba(255,255,255,0.95)';
-            ctxOverlay.strokeStyle = 'rgba(0,0,0,0.0)';
-            ctxOverlay.fillStyle = 'rgba(255,255,255,0.96)';
-            
-            function drawOverlayFor(target, displayText) {
-              if (!target || !target.pos) return;
-              const pos = target.pos;
-              const padding = Number(boxPaddingInput.value) || 2;
-              const text = (typeof displayText === 'number') ? displayText.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : displayText;
-              // measure
-              const measure = ctxOverlay.measureText(text);
-              const w = measure.width + padding * 6;
-              const h = Number(fontSizeInput.value || 10) + padding * 4;
-              // Coordinates: pos.x,pos.y are text start. We'll draw white rect slightly above pos.y
-              const rx = (pos.x) + (Number(xOffsetInput.value) || 0);
-              const ry = (pos.y) - h / 1.5 + (Number(yOffsetInput.value) || 0);
-              ctxOverlay.fillStyle = 'rgba(255,255,255,0.96)';
-              ctxOverlay.fillRect(rx - padding, ry - padding, w, h + padding);
-              ctxOverlay.fillStyle = '#000';
-              ctxOverlay.fillText(text, rx + 2, ry + h - padding - 3);
-            }
-            
-            drawOverlayFor(pageDetection.found.taxable, pageDetection.found.taxable.value);
-            drawOverlayFor(pageDetection.found.sgst, pageDetection.found.sgst.value);
-            drawOverlayFor(pageDetection.found.cgst, pageDetection.found.cgst.value);
-            drawOverlayFor(pageDetection.found.subtotal, pageDetection.found.subtotal.value);
-            drawOverlayFor(pageDetection.found.net, pageDetection.found.net.value);
-            
-            ctxOverlay.restore();
-            
-            pageDetection.calculated = true;
-          } else {
-            pageDetection.calculated = false;
-          }
-          
-        } catch (err) {
-          console.error('page parse error', err);
-        }
-        
-        // Show page preview + small report
-        const pageBlock = document.createElement('div');
-        pageBlock.className = 'page-block';
-        pageBlock.appendChild(canvas);
-        const info = document.createElement('div');
-        info.className = 'field-list';
-        info.textContent = `Page ${p} — detection summary (see console for raw tokens).`;
-        pageBlock.appendChild(info);
-        preview.appendChild(pageBlock);
-        
-        // push meta for pdf-lib overlay later
-        pageMeta.push({ pageNumber: p, viewport, detection: pageDetection });
-      } // end pages loop
-      
-      // After previews, prepare final PDF with overlays using pdf-lib
-      await createCorrectedPdf(loadedPdfBytes, pageMeta);
-      downloadBtn.disabled = false;
-      alert('Preview generated. If overlays look OK, click "Download Corrected PDF". Tweak offsets if numbers misaligned and re-process.');
-    }
-    
-    // Create corrected PDF using pdf-lib
-    async function createCorrectedPdf(origPdfBytes, meta) {
-      const { PDFDocument, rgb, StandardFonts } = PDFLib;
-      const pdfDoc = await PDFDocument.load(origPdfBytes);
-      
-      const pages = pdfDoc.getPages();
-      
-      // font
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      
-      for (const m of meta) {
-        const pIndex = m.pageNumber - 1;
-        const page = pages[pIndex];
-        const pWidth = page.getWidth();
-        const pHeight = page.getHeight();
-        
-        const det = m.detection;
-        if (!det.calculated) continue;
-        
-        const scale = det.viewport.scale || 1.5; // viewport.scale used when rendering preview; pdf units conversion needed
-        // pdf.js gave positions in px based on preview viewport scale. We need to convert back to PDF points.
-        // Approximate conversion: pdfPoint = canvasPx * (pdfWidth / canvasWidth)
-        const canvasW = det.viewport.width;
-        const canvasH = det.viewport.height;
-        // actual pdf dimensions in points roughly equal to page.getWidth/Height
-        const pdfW = pWidth;
-        const pdfH = pHeight;
-        
-        const xScale = pdfW / canvasW;
-        const yScale = pdfH / canvasH;
-        
-        const pad = Number(boxPaddingInput.value) || 2;
-        const fSize = Number(fontSizeInput.value) || 10;
-        
-        // helper to compute pdf-lib rectangle & text
-        function drawReplacement(target, value) {
-          if (!target || !target.pos) return;
-          const pos = target.pos;
-          const text = (typeof value === 'number') ? value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value;
-          
-          const rx = (pos.x + (Number(xOffsetInput.value) || 0)) * xScale;
-          // Convert canvas y to PDF y: pdf y origin is bottom-left while canvas y origin is top-left.
-          const ry_canvas = pos.y + (Number(yOffsetInput.value) || 0);
-          const ry = pdfH - (ry_canvas * yScale);
-          
-          const measureWidth = font.widthOfTextAtSize(text, fSize);
-          const measureHeight = fSize + 2;
-          
-          const rectX = rx - pad * xScale;
-          const rectY = ry - measureHeight - pad * yScale;
-          const rectW = measureWidth + pad * 8;
-          const rectH = measureHeight + pad * 4;
-          
-          // Draw white rectangle (to cover old)
-          page.drawRectangle({
-            x: rectX,
-            y: rectY,
-            width: rectW,
-            height: rectH,
-            color: PDFLib.rgb(1, 1, 1),
-          });
-          
-          // Draw text (black)
-          page.drawText(text, {
-            x: rectX + 3,
-            y: rectY + (rectH - measureHeight) / 2,
-            size: fSize,
-            font,
-            color: PDFLib.rgb(0, 0, 0),
-          });
-        }
-        
-        drawReplacement(det.found.taxable, det.found.taxable.value);
-        drawReplacement(det.found.sgst, det.found.sgst.value);
-        drawReplacement(det.found.cgst, det.found.cgst.value);
-        drawReplacement(det.found.subtotal, det.found.subtotal.value);
-        drawReplacement(det.found.net, det.found.net.value);
-      }
-      
-      const out = await pdfDoc.save();
-      processedPdfBytes = out;
-    }
+    processBtn.onclick = () => processAllPagesAndDownload();
   </script>
 </body>
 
-</html>
-
-
--->
-
-
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>Invoice Fixer — Fixed Coordinates</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-
-<!-- PDF.js (preview + text extraction) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
-<script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-</script>
-
-<!-- pdf-lib (overlay + output) -->
-<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-
-<style>
-  :root { --bg:#0b1220; --card:#0f172a; --accent:#8b5cf6; --text:#e9eef7; --muted:#9fb0c7; }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter, system-ui, Segoe UI, Roboto, Arial}
-  .wrap{max-width:1100px;margin:0 auto;padding:20px}
-  h1{font-size:18px;margin:0 0 12px}
-  .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.4);margin-bottom:12px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
-  button.secondary{background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--text)}
-  input[type="number"],select{background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--text);border-radius:8px;padding:6px 8px;min-width:80px}
-  label{font-size:12px;color:var(--muted)}
-  .stack{display:flex;flex-direction:column;gap:6px}
-  #canvasWrap{max-height:75vh;overflow:auto;border:1px dashed rgba(255,255,255,.08);border-radius:10px;padding:10px}
-  canvas{max-width:100%;height:auto;background:#0a0f1c;border-radius:8px}
-  .legend{font-size:12px;color:var(--muted)}
-  .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.06);margin-right:6px}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <h1>Invoice Fixer — Overlay Correct Taxables/Taxes (Fixed Coords)</h1>
-
-  <div class="card">
-    <div class="row">
-      <input id="file" type="file" accept="application/pdf"/>
-      <div class="stack">
-        <label>Fallback Discount (₹) if not detected</label>
-        <input id="fallbackDiscount" type="number" value="6000" step="0.01"/>
-      </div>
-      <div class="stack">
-        <label>SGST %</label>
-        <input id="sgstPct" type="number" value="14" step="0.01"/>
-      </div>
-      <div class="stack">
-        <label>CGST %</label>
-        <input id="cgstPct" type="number" value="14" step="0.01"/>
-      </div>
-      <div class="stack">
-        <label>Font size</label>
-        <input id="fontSize" type="number" value="10" step="1"/>
-      </div>
-      <div class="stack">
-        <label>Box padding</label>
-        <input id="pad" type="number" value="2" step="1"/>
-      </div>
-      <button id="previewBtn">Preview & Calibrate</button>
-      <button id="processBtn" disabled>Process All Pages & Download</button>
-    </div>
-    <div class="legend" style="margin-top:8px">
-      1) Load PDF → 2) Choose a field name → 3) Click on the preview where that number appears → repeat for all fields → 4) Process.
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="row">
-      <div class="stack">
-        <label>Field to place (click on preview canvas)</label>
-        <select id="activeField">
-          <option value="taxable">Taxable (row)</option>
-          <option value="sgstAmt">SGST amount</option>
-          <option value="cgstAmt">CGST amount</option>
-          <option value="subTotal">Sub Total</option>
-          <option value="roundOff">Round Off</option>
-          <option value="netTotal">Net Total</option>
-        </select>
-      </div>
-      <button id="clearCoords" class="secondary">Clear positions</button>
-      <div class="legend">
-        <span class="badge">Tip</span> Positions are fixed for all pages. Click precisely on the **left edge** of each number.
-      </div>
-    </div>
-    <div id="canvasWrap"><canvas id="preview" width="800" height="1131"></canvas></div>
-  </div>
-
-  <div class="card legend" id="status"></div>
-</div>
-
-<script>
-/* ---------- State ---------- */
-let srcBytes = null;
-let pdfjsDoc = null;
-let firstViewport = null;
-let firstPageSize = null; // {width,height} in PDF points
-let coords = {}; // { field: {x,y} in PDF points (origin bottom-left) }
-const fields = ["taxable","sgstAmt","cgstAmt","subTotal","roundOff","netTotal"];
-
-/* ---------- UI refs ---------- */
-const el = id => document.getElementById(id);
-const fileInput = el('file');
-const previewBtn = el('previewBtn');
-const processBtn = el('processBtn');
-const activeField = el('activeField');
-const clearCoords = el('clearCoords');
-const canvas = el('preview');
-const ctx = canvas.getContext('2d');
-const statusEl = el('status');
-
-const fallbackDiscountEl = el('fallbackDiscount');
-const sgstPctEl = el('sgstPct');
-const cgstPctEl = el('cgstPct');
-const fontSizeEl = el('fontSize');
-const padEl = el('pad');
-
-/* ---------- Helpers ---------- */
-function fmtINR(n, d=2){ return Number(n).toLocaleString('en-IN',{minimumFractionDigits:d, maximumFractionDigits:d}); }
-function toNum(s){ s = (s||"").toString().replace(/,/g,''); const n = parseFloat(s); return isNaN(n)?null:n; }
-
-function setStatus(msg){ statusEl.textContent = msg; }
-
-function drawMarker(field){
-  const p = coords[field]; if(!p || !firstViewport) return;
-
-  // Convert PDF-lib coords back to canvas px
-  const x = p.x / firstPageSize.width * canvas.width;
-  const y = canvas.height - (p.y / firstPageSize.height * canvas.height);
-
-  ctx.save();
-  ctx.fillStyle = "rgba(255,0,0,0.5)"; // red box
-  ctx.fillRect(x-2, y-10, 110, 16);
-  ctx.fillStyle = "#fff";
-  ctx.font = "10px monospace";
-  ctx.fillText(field, x, y);
-  ctx.restore();
-}
-function redrawPreviewExtras(){
-  if(!firstViewport) return;
-  fields.forEach(drawMarker);
-}
-
-/* ---------- Load + preview first page ---------- */
-previewBtn.onclick = async () => {
-  if(!fileInput.files.length){ alert("Choose a PDF first"); return; }
-  srcBytes = await fileInput.files[0].arrayBuffer();
-
-  // pdf.js for preview
-  const loadingTask = pdfjsLib.getDocument({ data: srcBytes });
-  pdfjsDoc = await loadingTask.promise;
-
-  const page = await pdfjsDoc.getPage(1);
-  firstViewport = page.getViewport({ scale: 1.5 });
-  canvas.width = Math.floor(firstViewport.width);
-  canvas.height = Math.floor(firstViewport.height);
-
-  const renderCtx = { canvasContext: ctx, viewport: firstViewport };
-  await page.render(renderCtx).promise;
-
-  // We also need the actual PDF page size in points for pdf-lib coordinates
-  // pdf-lib will tell us after loading:
-  const docLib = await PDFLib.PDFDocument.load(srcBytes);
-  const p0 = docLib.getPages()[0];
-  firstPageSize = { width: p0.getWidth(), height: p0.getHeight() };
-
-  processBtn.disabled = false;
-  setStatus("Preview ready. Select a field name and click the canvas at the LEFT EDGE of that printed number to set its position. Repeat for all fields. Then click “Process All Pages & Download”.");
-  redrawPreviewExtras();
-};
-
-/* ---------- Click to set coords ---------- */
-canvas.addEventListener('click', (e) => {
-  if (!firstViewport || !firstPageSize) return;
-  const rect = canvas.getBoundingClientRect();
-  const xPx = e.clientX - rect.left;
-  const yPx = e.clientY - rect.top;
-  
-  // Convert to PDF-lib coords (origin bottom-left)
-  const xPdf = xPx / canvas.width * firstPageSize.width;
-  const yPdf = (canvas.height - yPx) / canvas.height * firstPageSize.height;
-  
-  coords[activeField.value] = { x: xPdf, y: yPdf };
-  
-  pdfjsDoc.getPage(1).then(page => {
-    page.render({ canvasContext: ctx, viewport: firstViewport }).promise.then(redrawPreviewExtras);
-  });
-});
-clearCoords.onclick = ()=>{
-  coords = {};
-  if(pdfjsDoc) pdfjsDoc.getPage(1).then(page=>{
-    page.render({ canvasContext: ctx, viewport: firstViewport }).promise.then(redrawPreviewExtras);
-  });
-};
-
-/* ---------- Extraction (per page) ---------- */
-async function extractNumbersForPage(p){
-  const page = await pdfjsDoc.getPage(p);
-  const tc = await page.getTextContent();
-  const nums = [];
-  for(const it of tc.items){
-    const s = (it.str||"").trim();
-    if(!s) continue;
-    // numeric tokens like 61,144.06 / 47768.80 / 6000.00 / 14.00
-    const m = s.match(/^(?:\d{1,3}(?:,\d{3})*|\d+)(?:\.\d+)?$/);
-    if(m){ nums.push(toNum(s)); }
-  }
-  return nums;
-}
-
-// Heuristic: Rate = smallest "big" number on page (40k–70k).
-function detectRate(allNums){
-  const big = allNums.filter(n => n>=40000 && n<=70000);
-  if(!big.length) return null;
-  return Math.min(...big);
-}
-// Detect discount ~6000 (between 3000 and 15000). Fallback to user value.
-function detectDiscount(allNums, fallback){
-  const candidates = allNums.filter(n => n>=3000 && n<=15000);
-  if(candidates.includes(6000)) return 6000.00;
-  return candidates.length ? candidates[0] : fallback;
-}
-// Percent: prefer 14
-function detectPercent(allNums, fallback){
-  return allNums.includes(14) || allNums.includes(14.00) ? 14.00 : (fallback ?? 14.00);
-}
-
-/* ---------- Overlay engine ---------- */
-async function processAllPagesAndDownload(){
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
-  const pdfDoc = await PDFDocument.load(srcBytes);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-  // Validate we have positions for all fields
-  for(const f of fields){
-    if(!coords[f]){ alert(`Set position for: ${f}`); return; }
-  }
-
-  const sgstPct = parseFloat(sgstPctEl.value || "14");
-  const cgstPct = parseFloat(cgstPctEl.value || "14");
-  const fallbackDiscount = parseFloat(fallbackDiscountEl.value || "6000");
-  const fSize = parseFloat(fontSizeEl.value || "10");
-  const pad = parseFloat(padEl.value || "2");
-
-  const pageCount = pdfDoc.getPageCount();
-  for(let i=0; i<pageCount; i++){
-    const page = pdfDoc.getPages()[i];
-    const pnum = i+1;
-
-    // pull numbers from same page via pdf.js for per-page Rate/Discount/%
-    const nums = await extractNumbersForPage(pnum);
-    const rate = detectRate(nums);
-    const discount = detectDiscount(nums, fallbackDiscount);
-    const sgstP = detectPercent(nums, sgstPct);
-    const cgstP = detectPercent(nums, cgstPct);
-
-    if(rate == null){
-      // if not found, skip page
-      continue;
-    }
-
-    // ---------- CORRECT CALC ----------
-    const taxable = Math.max(0, rate - discount);       // ✅ SUBTRACT discount
-    const sgstAmt = +(taxable * (sgstP/100));
-    const cgstAmt = +(taxable * (cgstP/100));
-    const subTotal = +(taxable + sgstAmt + cgstAmt);
-    const netRounded = Math.round(subTotal);            // nearest rupee
-    const roundOff = +(netRounded - subTotal);
-
-    // Numbers to paint
-    const vals = {
-      taxable: fmtINR(taxable, 2),
-      sgstAmt: fmtINR(sgstAmt, 2),
-      cgstAmt: fmtINR(cgstAmt, 2),
-      subTotal: fmtINR(subTotal, 2),
-      roundOff: (roundOff>=0? "+" : "") + fmtINR(roundOff, 2),
-      netTotal: netRounded.toLocaleString('en-IN')
-    };
-
-    // Helper to draw white box then text at a PDF point
-    function paint(key){
-      const p = coords[key]; if(!p) return;
-      const text = vals[key];
-      const tw = font.widthOfTextAtSize(text, fSize);
-      const th = fSize + 2;
-      page.drawRectangle({
-        x: p.x - pad, y: p.y - th - pad, width: tw + pad*6, height: th + pad*3, color: rgb(1,1,1)
-      });
-      page.drawText(text, { x: p.x, y: p.y - th/2, size: fSize, font, color: rgb(0,0,0) });
-    }
-
-    // Paint overlays
-    paint("taxable");
-    paint("sgstAmt");
-    paint("cgstAmt");
-    paint("subTotal");
-    paint("roundOff");
-    paint("netTotal");
-  }
-
-  const out = await pdfDoc.save();
-  const blob = new Blob([out], {type:"application/pdf"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = "Corrected_Invoices.pdf";
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-}
-
-processBtn.onclick = () => processAllPagesAndDownload();
-</script>
-</body>
 </html>
