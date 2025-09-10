@@ -168,6 +168,7 @@
         <div class="stack">
           <label>Field to place (click on preview canvas)</label>
           <select id="activeField">
+            <option value="discount">Discount</option>
             <!-- First row -->
             <option value="taxable1">Taxable (row 1)</option>
             <option value="sgstAmt1">SGST amount (row 1)</option>
@@ -204,6 +205,7 @@
     let coords = {}; // { field: {x,y} in PDF points (origin bottom-left) }
     
     const fields = [
+      "discount",
       "taxable1", "sgstAmt1", "cgstAmt1", // first row
       "taxable2", "sgstAmt2", "cgstAmt2", // second row
       "subTotal", "roundOff", "netTotal" // totals
@@ -363,7 +365,8 @@
         // pull numbers from same page via pdf.js for per-page Rate/Discount/%
         const nums = await extractNumbersForPage(pnum);
         const rate = detectRate(nums);
-        const discount = detectDiscount(nums, fallbackDiscount);
+        //const discount = detectDiscount(nums, fallbackDiscount);
+       const discount = fallbackDiscount;
         const sgstP = detectPercent(nums, sgstPct);
         const cgstP = detectPercent(nums, cgstPct);
         
@@ -381,6 +384,7 @@
         const roundOff = +(netRounded - subTotal);
         
         const vals = {
+          discount: fmtINR(discount, 2),
           // First row
           taxable1: fmtINR(taxable, 2),
           sgstAmt1: fmtINR(sgstAmt, 2),
@@ -394,7 +398,7 @@
           // Totals
           subTotal: fmtINR(subTotal, 2),
           roundOff: (roundOff >= 0 ? "+" : "") + fmtINR(roundOff, 2),
-         netTotal: fmtINR(netRounded, 2)
+          netTotal: fmtINR(netRounded, 2)
         }; // Helper to draw white box then text at a PDF point
         function paint(key) {
           const p = coords[key];
@@ -413,6 +417,7 @@
         }
         
         // Paint overlays
+        paint("discount");
         paint("taxable1");
         paint("sgstAmt1");
         paint("cgstAmt1");
