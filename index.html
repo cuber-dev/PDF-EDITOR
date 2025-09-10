@@ -168,7 +168,9 @@
         <div class="stack">
           <label>Field to place (click on preview canvas)</label>
           <select id="activeField">
-            <option value="discount">Discount</option>
+            <option value="discount">Discount1</option>
+            <option value="discount2">Discount2</option>
+
             <!-- First row -->
             <option value="taxable1">Taxable (row 1)</option>
             <option value="sgstAmt1">SGST amount (row 1)</option>
@@ -205,7 +207,7 @@
     let coords = {}; // { field: {x,y} in PDF points (origin bottom-left) }
     
     const fields = [
-      "discount",
+      "discount",'discount2',
       "taxable1", "sgstAmt1", "cgstAmt1", // first row
       "taxable2", "sgstAmt2", "cgstAmt2", // second row
       "subTotal", "roundOff", "netTotal" // totals
@@ -385,6 +387,8 @@
         
         const vals = {
           discount: fmtINR(discount, 2),
+          discount2: fmtINR(discount, 2),
+
           // First row
           taxable1: fmtINR(taxable, 2),
           sgstAmt1: fmtINR(sgstAmt, 2),
@@ -418,6 +422,7 @@
         
         // Paint overlays
         paint("discount");
+        paint("discount2");
         paint("taxable1");
         paint("sgstAmt1");
         paint("cgstAmt1");
