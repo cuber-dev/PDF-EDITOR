@@ -17,22 +17,39 @@
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
   
   <style>
-    :root {
-      --bg: #f9f8ff;
-      /* very light lavender background */
-      --card: #ffffff;
-      /* pure white card surface */
-      --text: #2d1b4e;
-      /* deep purple for strong readability */
-      --muted: #6b5c7d;
-      /* muted lavender-gray for secondary text */
-      
-      --accent: #7c3aed;
-      /* vibrant purple accent */
-      --accent-alt: #a78bfa;
-      /* softer purple for hovers / highlights */
-      --accent-gradient: linear-gradient(135deg, #7c3aed, #a78bfa);
-    }
+:root {
+  --bg: #f9f8ff;        /* very light lavender background */
+  --card: #ffffff;      /* pure white card surface */
+  --text: #2d1b4e;      /* deep purple for readability */
+  --muted: #6b5c7d;     /* muted lavender-gray for secondary text */
+
+  --accent: #7c3aed;    /* vibrant purple accent */
+  --accent-alt: #a78bfa; /* softer purple for hovers/highlights */
+  --accent-gradient: linear-gradient(135deg, #7c3aed, #a78bfa);
+
+  --border: #d6bcfa;    /* light purple border */
+  --border-focus: #7c3aed; /* strong purple on focus */
+}
+
+input,
+select,
+textarea {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--text);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.2); /* subtle purple glow */
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--border-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2); /* subtle purple glow */
+}
     
     [data-theme="dark"] {
       --bg: #1f2937;
